@@ -1,0 +1,171 @@
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+-- Player
+local player = Players.LocalPlayer
+local dodge = false
+local dodgeDistance = 10
+
+-- GUI (Rayfield)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+    Name = "Slap Battles",
+    LoadingTitle = "Slap Teleport Farmer",
+    LoadingSubtitle = "by muye & looly",
+    Theme = "Default",
+})
+
+local Tab = Window:CreateTab("Main", 4483362458)
+
+-- Teleport Locations (using correct parts)
+local teleportLocations = {
+    ["Main Island"] = workspace.Arena.island1,  -- Main Island part
+    ["Cube of Death Island"] = workspace.Arena.island2,  -- Cube of Death Island part
+    ["Slapple Island"] = workspace.Arena.island5,  -- Slapple Island part
+    ["Cannon Island"] = workspace.Arena.island4,  -- Cannon Island part
+}
+
+-- Function to teleport to a specific location (keeping it simple)
+local function teleportToLocation(locationName)
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local location = teleportLocations[locationName]
+        if location then
+            hrp.CFrame = location.CFrame + Vector3.new(0, 5, 0)  -- Teleport above the island part
+            print("Teleported to:", locationName, "Position:", location.Position)
+        else
+            print("Location not found:", locationName)
+        end
+    else
+        print("HRP not found for teleporting.")
+    end
+end
+
+-- Dodge (Q Key)
+Tab:CreateSection("Dodge")
+Tab:CreateToggle({
+    Name = "Dodge (Press Q)",
+    CurrentValue = false,
+    Callback = function(Value)
+        dodge = Value
+        print("Dodge toggled:", Value)
+    end,
+})
+
+Tab:CreateInput({
+    Name = "Dodge Distance",
+    PlaceholderText = tostring(dodgeDistance),
+    Callback = function(Text)
+        dodgeDistance = tonumber(Text) or 10
+        print("Dodge distance set to:", dodgeDistance)
+    end,
+})
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Q and dodge and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * dodgeDistance)
+            print("Dodged to:", hrp.CFrame.Position)
+        else
+            print("HRP not found for dodging.")
+        end
+    end
+end)
+
+-- SLAPPLE FARMING (Original code for Slapple)
+Tab:CreateSection("Slapple Farm")
+
+Tab:CreateToggle({
+    Name = "Slapple Farm",
+    CurrentValue = false,
+    Callback = function(state)
+        getgenv().slapfarmspissb = state
+        print("Slapple Farm toggled:", state)
+        if state then
+            task.spawn(function()
+                while getgenv().slapfarmspissb do
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        for i, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
+                            if v.Name == "Glove" and v:FindFirstChild("TouchInterest") then
+                                firetouchinterest(player.Character.HumanoidRootPart, v, 0)
+                                firetouchinterest(player.Character.HumanoidRootPart, v, 1)
+                                print("Slapped slapple:", v.Parent.Name)
+                                task.wait(0.5) -- Cooldown between slaps
+                            end
+                        end
+                    end
+                    task.wait(1) -- Wait for 1 second before starting the next cycle
+                end
+            end)
+        end
+    end,
+})
+
+-- TELEPORT BUTTONS (Using the same method for all buttons like Slapple)
+Tab:CreateSection("Teleport")
+
+-- Main Island Button
+Tab:CreateButton({
+    Name = "Teleport to Main Island",
+    Callback = function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            teleportToLocation("Main Island")
+        else
+            print("Character or HRP not found for teleporting.")
+        end
+    end
+})
+
+-- Cube of Death Island Button
+Tab:CreateButton({
+    Name = "Teleport to Cube of Death Island",
+    Callback = function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            teleportToLocation("Cube of Death Island")
+        else
+            print("Character or HRP not found for teleporting.")
+        end
+    end
+})
+
+-- Slapple Island Button
+Tab:CreateButton({
+    Name = "Teleport to Slapple Island",
+    Callback = function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            teleportToLocation("Slapple Island")
+        else
+            print("Character or HRP not found for teleporting.")
+        end
+    end
+})
+
+-- Cannon Island Button
+Tab:CreateButton({
+    Name = "Teleport to Cannon Island",
+    Callback = function()
+        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            teleportToLocation("Cannon Island")
+        else
+            print("Character or HRP not found for teleporting.")
+        end
+    end
+})
+
+Rayfield:LoadConfiguration()
+
+-- Ensure character is loaded before starting
+player.CharacterAdded:Connect(function(character)
+    print("Character added.")
+    character:WaitForChild("HumanoidRootPart")
+    print("HumanoidRootPart found.")
+
+    -- Connect to the HealthChanged event to stop farming when the player dies
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        print("Player died. Stopping Slapple Farm.")
+        getgenv().slapfarmspissb = false
+    end)
+end)
