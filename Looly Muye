@@ -18,22 +18,22 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Main", 4483362458)
 
--- Teleport Locations (using correct parts)
+-- Teleport Locations (using fixed positions)
 local teleportLocations = {
-    ["Main Island"] = workspace.Arena.island1,  -- Main Island part
-    ["Cube of Death Island"] = workspace.Arena.island2,  -- Cube of Death Island part
-    ["Slapple Island"] = workspace.Arena.island5,  -- Slapple Island part
-    ["Cannon Island"] = workspace.Arena.island4,  -- Cannon Island part
+    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),  -- Main Island position
+    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),  -- Cube of Death Island position
+    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),  -- Slapple Island position
+    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),  -- Cannon Island position
 }
 
 -- Function to teleport to a specific location (keeping it simple)
 local function teleportToLocation(locationName)
     local hrp = player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
-        local location = teleportLocations[locationName]
-        if location then
-            hrp.CFrame = location.CFrame + Vector3.new(0, 5, 0)  -- Teleport above the island part
-            print("Teleported to:", locationName, "Position:", location.Position)
+        local position = teleportLocations[locationName]
+        if position then
+            hrp.CFrame = CFrame.new(position) + Vector3.new(0, 5, 0)  -- Teleport above the island position
+            print("Teleported to:", locationName, "Position:", position)
         else
             print("Location not found:", locationName)
         end
