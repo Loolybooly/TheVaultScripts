@@ -11,7 +11,7 @@ local dodgeDistance = 10
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Slap Battles",
-    LoadingTitle = "Slap Teleport Farmer",
+    LoadingTitle = "By The Vault Scripts",
     LoadingSubtitle = "by muye & looly",
     Theme = "Default",
 })
