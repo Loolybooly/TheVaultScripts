@@ -24,7 +24,7 @@ local teleportLocations = {
     ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),  -- Cube of Death Island position
     ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),  -- Slapple Island position
     ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),  -- Cannon Island position
-    ["Brazil"] = Vector3.new(-821.6227416992188, 312.51959228515625, -2.3029122352600098),  -- Brazil position (exact)
+    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),  -- Brazil position (shortened)
 }
 
 -- Function to teleport to a specific location (keeping it simple)
