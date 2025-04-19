@@ -1,0 +1,124 @@
+-- Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+-- Player
+local player = Players.LocalPlayer
+local dodge = false
+local dodgeDistance = 10
+
+-- GUI (Rayfield)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+    Name = "Slap Battles",
+    LoadingTitle = "By The Vault Scripts",
+    LoadingSubtitle = "Coded by Muye & Looly",
+    Theme = "Default",
+})
+
+local Tab = Window:CreateTab("Main", 4483362458)
+
+-- Teleport Locations
+local teleportLocations = {
+    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
+    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
+    ["Cube of Death (Alt)"] = Vector3.new(-270.1338, -5.2781, 0.6982),
+    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
+    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
+    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
+    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
+}
+
+-- Function to teleport
+local function teleportToLocation(locationName)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and teleportLocations[locationName] then
+        hrp.CFrame = CFrame.new(teleportLocations[locationName]) + Vector3.new(0, 5, 0)
+        print("Teleported to:", locationName)
+    else
+        warn("Could not teleport:", locationName)
+    end
+end
+
+-- Dodge (Q Key)
+Tab:CreateSection("Dodge")
+Tab:CreateToggle({
+    Name = "Dodge (Press Q)",
+    CurrentValue = false,
+    Callback = function(Value)
+        dodge = Value
+        print("Dodge toggled:", Value)
+    end,
+})
+Tab:CreateInput({
+    Name = "Dodge Distance",
+    PlaceholderText = tostring(dodgeDistance),
+    Callback = function(Text)
+        dodgeDistance = tonumber(Text) or 10
+        print("Dodge distance set to:", dodgeDistance)
+    end,
+})
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Q and dodge and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * dodgeDistance)
+            print("Dodged forward by", dodgeDistance, "studs")
+        end
+    end
+end)
+
+-- Slapple Auto Farm
+Tab:CreateSection("Slapple Farm")
+Tab:CreateToggle({
+    Name = "Slapple Farm",
+    CurrentValue = false,
+    Callback = function(state)
+        getgenv().slapfarmspissb = state
+        print("Slapple Farm toggled:", state)
+        if state then
+            task.spawn(function()
+                while getgenv().slapfarmspissb do
+                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        for _, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
+                            if v.Name == "Glove" and v:FindFirstChild("TouchInterest") then
+                                firetouchinterest(player.Character.HumanoidRootPart, v, 0)
+                                firetouchinterest(player.Character.HumanoidRootPart, v, 1)
+                                print("Slapped slapple:", v.Parent.Name)
+                                task.wait(0.5)
+                            end
+                        end
+                    end
+                    task.wait(1)
+                end
+            end)
+        end
+    end,
+})
+
+-- Teleport Buttons
+Tab:CreateSection("Teleport")
+for locationName, _ in pairs(teleportLocations) do
+    Tab:CreateButton({
+        Name = "Teleport to " .. locationName,
+        Callback = function()
+            teleportToLocation(locationName)
+        end
+    })
+end
+
+Rayfield:LoadConfiguration()
+
+-- Character Ready Hook
+player.CharacterAdded:Connect(function(character)
+    print("Character added.")
+    character:WaitForChild("HumanoidRootPart")
+    print("HumanoidRootPart found.")
+
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        print("Player died. Stopping Slapple Farm.")
+        getgenv().slapfarmspissb = false
+    end)
+end)
