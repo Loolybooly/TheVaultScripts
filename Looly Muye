@@ -1,3 +1,4 @@
+
 -- Services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -18,28 +19,25 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Main", 4483362458)
 
--- Teleport Locations (using fixed positions)
+-- Teleport Locations
 local teleportLocations = {
-    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),  -- Main Island position
-    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),  -- Cube of Death Island position
-    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),  -- Slapple Island position
-    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),  -- Cannon Island position
-    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),  -- Brazil position (shortened)
+    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
+    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
+    ["Cube of Death"] = Vector3.new(-270.1338, -5.2781, 0.6982),
+    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
+    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
+    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
+    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
 }
 
--- Function to teleport to a specific location (keeping it simple)
+-- Function to teleport
 local function teleportToLocation(locationName)
-    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local position = teleportLocations[locationName]
-        if position then
-            hrp.CFrame = CFrame.new(position) + Vector3.new(0, 5, 0)  -- Teleport above the island position
-            print("Teleported to:", locationName, "Position:", position)
-        else
-            print("Location not found:", locationName)
-        end
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and teleportLocations[locationName] then
+        hrp.CFrame = CFrame.new(teleportLocations[locationName]) + Vector3.new(0, 5, 0)
+        print("Teleported to:", locationName)
     else
-        print("HRP not found for teleporting.")
+        warn("Could not teleport:", locationName)
     end
 end
 
@@ -53,7 +51,6 @@ Tab:CreateToggle({
         print("Dodge toggled:", Value)
     end,
 })
-
 Tab:CreateInput({
     Name = "Dodge Distance",
     PlaceholderText = tostring(dodgeDistance),
@@ -68,16 +65,13 @@ UserInputService.InputBegan:Connect(function(input)
         local hrp = player.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
             hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * dodgeDistance)
-            print("Dodged to:", hrp.CFrame.Position)
-        else
-            print("HRP not found for dodging.")
+            print("Dodged forward by", dodgeDistance, "studs")
         end
     end
 end)
 
--- SLAPPLE FARMING (Original code for Slapple)
+-- Slapple Auto Farm
 Tab:CreateSection("Slapple Farm")
-
 Tab:CreateToggle({
     Name = "Slapple Farm",
     CurrentValue = false,
@@ -88,94 +82,41 @@ Tab:CreateToggle({
             task.spawn(function()
                 while getgenv().slapfarmspissb do
                     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        for i, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
+                        for _, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
                             if v.Name == "Glove" and v:FindFirstChild("TouchInterest") then
                                 firetouchinterest(player.Character.HumanoidRootPart, v, 0)
                                 firetouchinterest(player.Character.HumanoidRootPart, v, 1)
                                 print("Slapped slapple:", v.Parent.Name)
-                                task.wait(0.5) -- Cooldown between slaps
+                                task.wait(0.5)
                             end
                         end
                     end
-                    task.wait(1) -- Wait for 1 second before starting the next cycle
+                    task.wait(1)
                 end
             end)
         end
     end,
 })
 
--- TELEPORT BUTTONS (Using the same method for all buttons like Slapple)
+-- Teleport Buttons
 Tab:CreateSection("Teleport")
-
--- Main Island Button
-Tab:CreateButton({
-    Name = "Teleport to Main Island",
-    Callback = function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            teleportToLocation("Main Island")
-        else
-            print("Character or HRP not found for teleporting.")
+for locationName, _ in pairs(teleportLocations) do
+    Tab:CreateButton({
+        Name = "Teleport to " .. locationName,
+        Callback = function()
+            teleportToLocation(locationName)
         end
-    end
-})
-
--- Cube of Death Island Button
-Tab:CreateButton({
-    Name = "Teleport to Cube of Death Island",
-    Callback = function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            teleportToLocation("Cube of Death Island")
-        else
-            print("Character or HRP not found for teleporting.")
-        end
-    end
-})
-
--- Slapple Island Button
-Tab:CreateButton({
-    Name = "Teleport to Slapple Island",
-    Callback = function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            teleportToLocation("Slapple Island")
-        else
-            print("Character or HRP not found for teleporting.")
-        end
-    end
-})
-
--- Cannon Island Button
-Tab:CreateButton({
-    Name = "Teleport to Cannon Island",
-    Callback = function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            teleportToLocation("Cannon Island")
-        else
-            print("Character or HRP not found for teleporting.")
-        end
-    end
-})
-
--- Brazil Button
-Tab:CreateButton({
-    Name = "Teleport to Brazil",
-    Callback = function()
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            teleportToLocation("Brazil")
-        else
-            print("Character or HRP not found for teleporting.")
-        end
-    end
-})
+    })
+end
 
 Rayfield:LoadConfiguration()
 
--- Ensure character is loaded before starting
+-- Character Ready Hook
 player.CharacterAdded:Connect(function(character)
     print("Character added.")
     character:WaitForChild("HumanoidRootPart")
     print("HumanoidRootPart found.")
 
-    -- Connect to the HealthChanged event to stop farming when the player dies
     local humanoid = character:WaitForChild("Humanoid")
     humanoid.Died:Connect(function()
         print("Player died. Stopping Slapple Farm.")
