@@ -1,124 +1,89 @@
--- Services
+-- ESP for Slap Battles: Shows Player Name + Glove Name
+
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
--- Player
-local player = Players.LocalPlayer
-local dodge = false
-local dodgeDistance = 10
+local function createESPTag(character, player)
+	if not character or not player then return end
+	local head = character:FindFirstChild("Head")
+	if not head then return end
 
--- GUI (Rayfield)
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Window = Rayfield:CreateWindow({
-    Name = "Slap Battles",
-    LoadingTitle = "By The Vault Scripts",
-    LoadingSubtitle = "Coded by Muye & Looly",
-    Theme = "Default",
-})
+	if head:FindFirstChild("ESPTag") then
+		head:FindFirstChild("ESPTag"):Destroy()
+	end
 
-local Tab = Window:CreateTab("Main", 4483362458)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "ESPTag"
+	billboard.Adornee = head
+	billboard.Size = UDim2.new(0, 200, 0, 50)
+	billboard.StudsOffset = Vector3.new(0, 2, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = head
 
--- Teleport Locations
-local teleportLocations = {
-    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
-    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
-    ["Cube of Death (Alt)"] = Vector3.new(-270.1338, -5.2781, 0.6982),
-    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
-    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
-    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
-    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
-}
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Name = "NameLabel"
+	nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	nameLabel.Position = UDim2.new(0, 0, 0, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.TextColor3 = Color3.new(1, 1, 1)
+	nameLabel.TextStrokeTransparency = 0
+	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.TextSize = 14
+	nameLabel.Text = player.DisplayName
+	nameLabel.Parent = billboard
 
--- Function to teleport
-local function teleportToLocation(locationName)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and teleportLocations[locationName] then
-        hrp.CFrame = CFrame.new(teleportLocations[locationName]) + Vector3.new(0, 5, 0)
-        print("Teleported to:", locationName)
-    else
-        warn("Could not teleport:", locationName)
-    end
+	local gloveLabel = Instance.new("TextLabel")
+	gloveLabel.Name = "GloveLabel"
+	gloveLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	gloveLabel.Position = UDim2.new(0, 0, 0.5, 0)
+	gloveLabel.BackgroundTransparency = 1
+	gloveLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+	gloveLabel.TextStrokeTransparency = 0
+	gloveLabel.Font = Enum.Font.SourceSansBold
+	gloveLabel.TextSize = 14
+	gloveLabel.Text = "Loading..."
+	gloveLabel.Parent = billboard
+
+	-- Update glove label
+	local function updateGlove()
+		local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+		if tool then
+			gloveLabel.Text = "Glove: " .. tool.Name
+		else
+			gloveLabel.Text = "Glove: None"
+		end
+	end
+
+	-- Update glove every 0.5s
+	task.spawn(function()
+		while character and character:FindFirstChild("Head") and character:FindFirstChild("Humanoid") and character.Humanoid.Health > 0 do
+			updateGlove()
+			task.wait(0.5)
+		end
+	end)
 end
 
--- Dodge (Q Key)
-Tab:CreateSection("Dodge")
-Tab:CreateToggle({
-    Name = "Dodge (Press Q)",
-    CurrentValue = false,
-    Callback = function(Value)
-        dodge = Value
-        print("Dodge toggled:", Value)
-    end,
-})
-Tab:CreateInput({
-    Name = "Dodge Distance",
-    PlaceholderText = tostring(dodgeDistance),
-    Callback = function(Text)
-        dodgeDistance = tonumber(Text) or 10
-        print("Dodge distance set to:", dodgeDistance)
-    end,
-})
+local function addESPToPlayer(player)
+	player.CharacterAdded:Connect(function(char)
+		char:WaitForChild("Head")
+		createESPTag(char, player)
+	end)
 
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Q and dodge and player.Character then
-        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * dodgeDistance)
-            print("Dodged forward by", dodgeDistance, "studs")
-        end
-    end
-end)
-
--- Slapple Auto Farm
-Tab:CreateSection("Slapple Farm")
-Tab:CreateToggle({
-    Name = "Slapple Farm",
-    CurrentValue = false,
-    Callback = function(state)
-        getgenv().slapfarmspissb = state
-        print("Slapple Farm toggled:", state)
-        if state then
-            task.spawn(function()
-                while getgenv().slapfarmspissb do
-                    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        for _, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
-                            if v.Name == "Glove" and v:FindFirstChild("TouchInterest") then
-                                firetouchinterest(player.Character.HumanoidRootPart, v, 0)
-                                firetouchinterest(player.Character.HumanoidRootPart, v, 1)
-                                print("Slapped slapple:", v.Parent.Name)
-                                task.wait(0.5)
-                            end
-                        end
-                    end
-                    task.wait(1)
-                end
-            end)
-        end
-    end,
-})
-
--- Teleport Buttons
-Tab:CreateSection("Teleport")
-for locationName, _ in pairs(teleportLocations) do
-    Tab:CreateButton({
-        Name = "Teleport to " .. locationName,
-        Callback = function()
-            teleportToLocation(locationName)
-        end
-    })
+	if player.Character then
+		createESPTag(player.Character, player)
+	end
 end
 
-Rayfield:LoadConfiguration()
+-- Apply to all current players
+for _, plr in pairs(Players:GetPlayers()) do
+	if plr ~= Players.LocalPlayer then
+		addESPToPlayer(plr)
+	end
+end
 
--- Character Ready Hook
-player.CharacterAdded:Connect(function(character)
-    print("Character added.")
-    character:WaitForChild("HumanoidRootPart")
-    print("HumanoidRootPart found.")
-
-    local humanoid = character:WaitForChild("Humanoid")
-    humanoid.Died:Connect(function()
-        print("Player died. Stopping Slapple Farm.")
-        getgenv().slapfarmspissb = false
-    end)
+-- New players
+Players.PlayerAdded:Connect(function(player)
+	if player ~= Players.LocalPlayer then
+		addESPToPlayer(player)
+	end
 end)
