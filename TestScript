@@ -2,11 +2,14 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Player
 local player = Players.LocalPlayer
 local dodge = false
 local dodgeDistance = 10
+local espEnabled = false
+local espObjects = {}
 
 -- GUI (Rayfield)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -19,51 +22,77 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Main", 4483362458)
 
--- Teleport Locations
-local teleportLocations = {
-    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
-    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
-    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
-    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
-    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
-    ["New Cube of Death"] = Vector3.new(-270.1338, -5.2781, 0.6982),
-    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
-}
+-- Utility: Clear ESP
+local function clearESP()
+    for _, objs in pairs(espObjects) do
+        for _, v in pairs(objs) do
+            v:Destroy()
+        end
+    end
+    espObjects = {}
+end
 
-local function teleportToLocation(locationName)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and teleportLocations[locationName] then
-        hrp.CFrame = CFrame.new(teleportLocations[locationName]) + Vector3.new(0, 5, 0)
+-- ESP Function
+local function updateESP()
+    clearESP()
+    if not espEnabled then return end
+
+    for _, otherPlayer in pairs(Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character then
+            local head = otherPlayer.Character:FindFirstChild("Head")
+            local torso = otherPlayer.Character:FindFirstChild("HumanoidRootPart") or otherPlayer.Character:FindFirstChild("Torso")
+
+            if head and torso then
+                local billboard = Instance.new("BillboardGui")
+                billboard.Size = UDim2.new(0, 200, 0, 40)
+                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.Adornee = head
+                billboard.AlwaysOnTop = true
+                billboard.Parent = head
+
+                local nameLabel = Instance.new("TextLabel", billboard)
+                nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                nameLabel.Text = otherPlayer.Name
+                nameLabel.TextColor3 = Color3.new(1, 1, 1)
+                nameLabel.BackgroundTransparency = 1
+                nameLabel.TextScaled = true
+
+                local gloveName = otherPlayer.leaderstats and otherPlayer.leaderstats:FindFirstChild("Glove") and otherPlayer.leaderstats.Glove.Value or "Loading..."
+                local gloveLabel = Instance.new("TextLabel", billboard)
+                gloveLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                gloveLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                gloveLabel.Text = gloveName
+                gloveLabel.TextColor3 = Color3.new(1, 0.2, 0.2)
+                gloveLabel.BackgroundTransparency = 1
+                gloveLabel.TextScaled = true
+
+                local box = Instance.new("BoxHandleAdornment")
+                box.Size = torso.Size
+                box.Adornee = torso
+                box.Color3 = Color3.new(0.5, 0, 0)
+                box.Transparency = 0.3
+                box.AlwaysOnTop = true
+                box.ZIndex = 1
+                box.Parent = torso
+
+                espObjects[otherPlayer] = { billboard, box }
+            end
+        end
     end
 end
 
--- Dodge
-Tab:CreateSection("Dodge")
-Tab:CreateToggle({
-    Name = "Dodge (Press Q)",
-    CurrentValue = false,
-    Callback = function(Value)
-        dodge = Value
-    end,
-})
-Tab:CreateInput({
-    Name = "Dodge Distance",
-    PlaceholderText = tostring(dodgeDistance),
-    Callback = function(Text)
-        dodgeDistance = tonumber(Text) or 10
-    end,
-})
-UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Q and dodge and player.Character then
-        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * dodgeDistance)
-        end
+-- Auto Update ESP
+RunService.RenderStepped:Connect(function()
+    if espEnabled then
+        updateESP()
+    else
+        clearESP()
     end
 end)
 
--- Slapple Farm
+-- ESP Section
 Tab:CreateSection("Slapple Farm")
+
 Tab:CreateToggle({
     Name = "Slapple Farm",
     CurrentValue = false,
@@ -73,10 +102,11 @@ Tab:CreateToggle({
             task.spawn(function()
                 while getgenv().slapfarmspissb do
                     if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                        for _, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
+                        for i, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
                             if v.Name == "Glove" and v:FindFirstChild("TouchInterest") then
                                 firetouchinterest(player.Character.HumanoidRootPart, v, 0)
                                 firetouchinterest(player.Character.HumanoidRootPart, v, 1)
+                                task.wait(0.5)
                             end
                         end
                     end
@@ -87,73 +117,81 @@ Tab:CreateToggle({
     end,
 })
 
--- Teleport Buttons
+Tab:CreateSection("ESP")
+
+Tab:CreateToggle({
+    Name = "ESP",
+    CurrentValue = false,
+    Callback = function(state)
+        espEnabled = state
+        if not state then
+            clearESP()
+        end
+    end,
+})
+
+Tab:CreateSection("Dodge")
+
+Tab:CreateToggle({
+    Name = "Dodge (Press Q)",
+    CurrentValue = false,
+    Callback = function(Value)
+        dodge = Value
+    end,
+})
+
+Tab:CreateInput({
+    Name = "Dodge Distance",
+    PlaceholderText = tostring(dodgeDistance),
+    Callback = function(Text)
+        dodgeDistance = tonumber(Text) or 10
+    end,
+})
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.Q and dodge and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = hrp.CFrame + (hrp.CFrame.LookVector * dodgeDistance)
+        end
+    end
+end)
+
+-- Teleports
 Tab:CreateSection("Teleport")
-for name, _ in pairs(teleportLocations) do
+
+local teleportLocations = {
+    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
+    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0988),
+    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
+    ["Cube of Death"] = Vector3.new(-270.1338, -5.2781, 0.6982),
+    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
+    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
+    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
+}
+
+local function teleportToLocation(locationName)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp and teleportLocations[locationName] then
+        hrp.CFrame = CFrame.new(teleportLocations[locationName]) + Vector3.new(0, 5, 0)
+    end
+end
+
+for _, name in ipairs({
+    "Main Island", "Lobby", "Cube of Death Island", "Cube of Death",
+    "Slapple Island", "Cannon Island", "Brazil"
+}) do
     Tab:CreateButton({
         Name = "Teleport to " .. name,
         Callback = function()
             teleportToLocation(name)
-        end,
+        end
     })
 end
 
--- ESP Section
-Tab:CreateSection("ESP")
-Tab:CreateToggle({
-    Name = "Enable ESP",
-    CurrentValue = false,
-    Callback = function(enabled)
-        if not enabled then
-            for _, v in pairs(workspace:GetChildren()) do
-                if v:FindFirstChild("ESP_Name") then v.ESP_Name:Destroy() end
-                if v:FindFirstChild("ESP_Box") then v.ESP_Box:Destroy() end
-            end
-            return
-        end
-
-        RunService:BindToRenderStep("UpdateESP", Enum.RenderPriority.Last.Value, function()
-            for _, plr in pairs(Players:GetPlayers()) do
-                if plr ~= player and plr.Character and plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChild("Torso") then
-                    local head = plr.Character.Head
-                    local torso = plr.Character.Torso
-
-                    -- ESP Text
-                    local tag = head:FindFirstChild("ESP_Name") or Instance.new("BillboardGui")
-                    tag.Name = "ESP_Name"
-                    tag.Adornee = head
-                    tag.Size = UDim2.new(0, 200, 0, 50)
-                    tag.StudsOffset = Vector3.new(0, 2, 0)
-                    tag.AlwaysOnTop = true
-
-                    local label = tag:FindFirstChild("TextLabel") or Instance.new("TextLabel")
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.TextColor3 = Color3.new(1, 1, 1)
-                    label.TextStrokeTransparency = 0
-                    label.Text = plr.Name .. " | " .. (plr.leaderstats and plr.leaderstats.Glove and plr.leaderstats.Glove.Value or "Loading...")
-                    label.Parent = tag
-                    tag.Parent = head
-
-                    -- ESP Box
-                    local box = torso:FindFirstChild("ESP_Box") or Instance.new("BoxHandleAdornment")
-                    box.Name = "ESP_Box"
-                    box.Adornee = torso
-                    box.Size = torso.Size + Vector3.new(0.1, 0.1, 0.1)
-                    box.ZIndex = 10
-                    box.AlwaysOnTop = true
-                    box.Color3 = Color3.fromRGB(139, 0, 0)
-                    box.Transparency = 0.4
-                    box.Parent = torso
-                end
-            end
-        end)
-    end,
-})
-
 Rayfield:LoadConfiguration()
 
--- Handle respawn
+-- Respawn check
 player.CharacterAdded:Connect(function(character)
     character:WaitForChild("HumanoidRootPart")
     local humanoid = character:WaitForChild("Humanoid")
