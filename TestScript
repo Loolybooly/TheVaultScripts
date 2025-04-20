@@ -44,27 +44,33 @@ local function updateESP()
 
             if head and torso then
                 local billboard = Instance.new("BillboardGui")
-                billboard.Size = UDim2.new(0, 200, 0, 40)
-                billboard.StudsOffset = Vector3.new(0, 2, 0)
+                billboard.Size = UDim2.new(0, 200, 0, 50)
+                billboard.StudsOffset = Vector3.new(0, 3, 0)
                 billboard.Adornee = head
                 billboard.AlwaysOnTop = true
                 billboard.Parent = head
 
+                local gloveName = otherPlayer.leaderstats and otherPlayer.leaderstats:FindFirstChild("Glove") and otherPlayer.leaderstats.Glove.Value or "Loading..."
+
+                local gloveLabel = Instance.new("TextLabel", billboard)
+                gloveLabel.Position = UDim2.new(0, 0, 0, 0)
+                gloveLabel.Size = UDim2.new(1, 0, 0.5, 0)
+                gloveLabel.Text = gloveName
+                gloveLabel.TextColor3 = Color3.new(1, 0, 0)
+                gloveLabel.BackgroundTransparency = 1
+                gloveLabel.TextScaled = false
+                gloveLabel.TextSize = 18
+                gloveLabel.Font = Enum.Font.SourceSansBold
+
                 local nameLabel = Instance.new("TextLabel", billboard)
+                nameLabel.Position = UDim2.new(0, 0, 0.5, 0)
                 nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
                 nameLabel.Text = otherPlayer.Name
                 nameLabel.TextColor3 = Color3.new(1, 1, 1)
                 nameLabel.BackgroundTransparency = 1
-                nameLabel.TextScaled = true
-
-                local gloveName = otherPlayer.leaderstats and otherPlayer.leaderstats:FindFirstChild("Glove") and otherPlayer.leaderstats.Glove.Value or "Loading..."
-                local gloveLabel = Instance.new("TextLabel", billboard)
-                gloveLabel.Position = UDim2.new(0, 0, 0.5, 0)
-                gloveLabel.Size = UDim2.new(1, 0, 0.5, 0)
-                gloveLabel.Text = gloveName
-                gloveLabel.TextColor3 = Color3.new(1, 0.2, 0.2)
-                gloveLabel.BackgroundTransparency = 1
-                gloveLabel.TextScaled = true
+                nameLabel.TextScaled = false
+                nameLabel.TextSize = 14
+                nameLabel.Font = Enum.Font.SourceSans
 
                 local box = Instance.new("BoxHandleAdornment")
                 box.Size = torso.Size
