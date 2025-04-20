@@ -60,7 +60,7 @@ local function updateESP()
                 gloveLabel.TextColor3 = Color3.new(1, 0, 0)
                 gloveLabel.BackgroundTransparency = 1
                 gloveLabel.TextScaled = false
-                gloveLabel.TextSize = 18
+                gloveLabel.TextSize = 30
                 gloveLabel.Font = Enum.Font.SourceSansBold
 
                 -- Player name label (BOTTOM)
