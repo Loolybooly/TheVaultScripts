@@ -30,23 +30,51 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("Main", 4483362458)
 
--- Teleport Locations
-local teleportLocations = {
-    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
-    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
-    ["Cube of Death"] = Vector3.new(-270.1338, -5.2782, 0.6983),
-    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
-    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
-    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
-    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
-}
+-- Discord Invite Button
+Tab:CreateSection("Discord")
+Tab:CreateButton({
+    Name = "Copy Discord Link",
+    Callback = function()
+        setclipboard("https://discord.gg/NUsQx6pnyQ")
+    end,
+})
 
-local function teleportToLocation(name)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp and teleportLocations[name] then
-        hrp.CFrame = CFrame.new(teleportLocations[name] + Vector3.new(0, 5, 0))
-    end
-end
+-- Special Features
+Tab:CreateSection("Special Features")
+
+-- Anti-Ragdoll Toggle
+Tab:CreateToggle({
+    Name = "Anti Ragdoll",
+    CurrentValue = false,
+    Callback = function(state)
+        antiRagdollEnabled = state
+        local character = player.Character
+        if character and antiRagdollEnabled then
+            local humanoid = character:WaitForChild("Humanoid")
+            humanoid.Died:Connect(function()
+                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+            end)
+        end
+    end,
+})
+
+-- Glove Reach Extender Toggle
+Tab:CreateToggle({
+    Name = "Glove Reach Extender",
+    CurrentValue = false,
+    Callback = function(state)
+        gloveReachExtenderEnabled = state
+    end,
+})
+
+-- Kill Aura Toggle
+Tab:CreateToggle({
+    Name = "Kill Aura",
+    CurrentValue = false,
+    Callback = function(state)
+        killAuraEnabled = state
+    end,
+})
 
 -- Slapple Farm
 Tab:CreateSection("Slapple Farm")
@@ -181,56 +209,16 @@ Tab:CreateInput({
     end,
 })
 
--- Special Features
-Tab:CreateSection("Special Features")
-
--- Anti-Ragdoll Toggle
-Tab:CreateToggle({
-    Name = "Anti Ragdoll",
-    CurrentValue = false,
-    Callback = function(state)
-        antiRagdollEnabled = state
-        local character = player.Character
-        if character and antiRagdollEnabled then
-            local humanoid = character:WaitForChild("Humanoid")
-            humanoid.Died:Connect(function()
-                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-            end)
-        end
-    end,
-})
-
--- Glove Reach Extender Toggle
-Tab:CreateToggle({
-    Name = "Glove Reach Extender",
-    CurrentValue = false,
-    Callback = function(state)
-        gloveReachExtenderEnabled = state
-    end,
-})
-
--- Kill Aura Toggle
-Tab:CreateToggle({
-    Name = "Kill Aura",
-    CurrentValue = false,
-    Callback = function(state)
-        killAuraEnabled = state
-    end,
-})
-
--- Fly Toggle
-Tab:CreateToggle({
-    Name = "Fly (Press F)",
-    CurrentValue = false,
-    Callback = function(state)
-        flyEnabled = state
-        if state then
-            -- Fly logic here
-        else
-            -- Stop flying logic here
-        end
-    end,
-})
+-- Teleport
+Tab:CreateSection("Teleport")
+for name, _ in pairs(teleportLocations) do
+    Tab:CreateButton({
+        Name = "Teleport to " .. name,
+        Callback = function()
+            teleportToLocation(name)
+        end,
+    })
+end
 
 -- Input Handler for Dodge & Fly
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
