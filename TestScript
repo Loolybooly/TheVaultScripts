@@ -11,8 +11,10 @@ local dodgeDistance = 10
 local dodgeUpDistance = 15
 local espEnabled = false
 local espObjects = {}
-local holdingDodge = false
-local holdingDodgeUp = false
+
+-- Dodge Key Holding
+local qHeld = false
+local zHeld = false
 
 -- GUI (Rayfield)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -93,7 +95,7 @@ Tab:CreateToggle({
                         if not espObjects[plr] then
                             espObjects[plr] = {}
 
-                            -- Glove label (ABOVE name)
+                            -- Glove label
                             local gloveBill = Instance.new("BillboardGui", hrp)
                             gloveBill.Size = UDim2.new(0, 200, 0, 50)
                             gloveBill.StudsOffset = Vector3.new(0, 4, 0)
@@ -109,7 +111,7 @@ Tab:CreateToggle({
                             gloveText.Text = plr.leaderstats and plr.leaderstats.Glove and plr.leaderstats.Glove.Value or "Loading"
                             table.insert(espObjects[plr], gloveBill)
 
-                            -- Name label (BELOW glove)
+                            -- Name label
                             local nameBill = Instance.new("BillboardGui", hrp)
                             nameBill.Size = UDim2.new(0, 200, 0, 50)
                             nameBill.StudsOffset = Vector3.new(0, 3, 0)
@@ -125,7 +127,7 @@ Tab:CreateToggle({
                             nameText.Text = plr.DisplayName
                             table.insert(espObjects[plr], nameBill)
 
-                            -- Red square box
+                            -- Red square
                             local box = Instance.new("BoxHandleAdornment", hrp)
                             box.Size = Vector3.new(2, 3, 1)
                             box.Color3 = Color3.new(0.5, 0, 0)
@@ -176,33 +178,33 @@ Tab:CreateInput({
     end,
 })
 
--- Input Handler
+-- Continuous Dodge Handler
+RunService.RenderStepped:Connect(function(dt)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if dodge and qHeld then
+            hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * (dodgeDistance * dt)
+        end
+        if dodgeUp and zHeld then
+            hrp.CFrame = hrp.CFrame + Vector3.new(0, dodgeUpDistance * dt, 0)
+        end
+    end
+end)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.Q then
-        holdingDodge = true
+        qHeld = true
     elseif input.KeyCode == Enum.KeyCode.Z then
-        holdingDodgeUp = true
+        zHeld = true
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
+UserInputService.InputEnded:Connect(function(input, _)
     if input.KeyCode == Enum.KeyCode.Q then
-        holdingDodge = false
+        qHeld = false
     elseif input.KeyCode == Enum.KeyCode.Z then
-        holdingDodgeUp = false
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        if dodge and holdingDodge then
-            hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * dodgeDistance * RunService.RenderStepped:Wait()
-        end
-        if dodgeUp and holdingDodgeUp then
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, dodgeUpDistance * RunService.RenderStepped:Wait(), 0)
-        end
+        zHeld = false
     end
 end)
 
