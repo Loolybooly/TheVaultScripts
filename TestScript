@@ -5,15 +5,13 @@ local RunService = game:GetService("RunService")
 
 -- Player
 local player = Players.LocalPlayer
-local dodge = false
-local dodgeUp = false
-local dodgeDistance = 10
-local dodgeUpDistance = 15
-local flyEnabled = false
-local flyActive = false
-local noclipEnabled = false
+local dodge, dodgeUp, flyEnabled, noclipEnabled = false, false, false, false
+local dodgeDistance, dodgeUpDistance = 10, 15
 local espEnabled = false
 local espObjects = {}
+local flying = false
+local velocity = Vector3.new(0, 0, 0)
+local qHeld, zHeld, fHeld = false, false, false
 
 -- GUI (Rayfield)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -35,6 +33,7 @@ local teleportLocations = {
     ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
     ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
 }
+
 local function teleportToLocation(name)
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp and teleportLocations[name] then
@@ -75,12 +74,14 @@ Tab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         espEnabled = state
+
         for _, objs in pairs(espObjects) do
             for _, obj in ipairs(objs) do
                 obj:Destroy()
             end
         end
         espObjects = {}
+
         if state then
             RunService:BindToRenderStep("ESP", Enum.RenderPriority.Camera.Value + 1, function()
                 for _, plr in pairs(Players:GetPlayers()) do
@@ -89,6 +90,7 @@ Tab:CreateToggle({
                         if not espObjects[plr] then
                             espObjects[plr] = {}
 
+                            -- Glove label
                             local gloveBill = Instance.new("BillboardGui", hrp)
                             gloveBill.Size = UDim2.new(0, 200, 0, 50)
                             gloveBill.StudsOffset = Vector3.new(0, 4, 0)
@@ -98,12 +100,12 @@ Tab:CreateToggle({
                             gloveText.BackgroundTransparency = 1
                             gloveText.TextColor3 = Color3.new(1, 0, 0)
                             gloveText.TextStrokeTransparency = 0
-                            gloveText.TextScaled = false
-                            gloveText.Font = Enum.Font.SourceSansBold
                             gloveText.TextSize = 18
+                            gloveText.Font = Enum.Font.SourceSansBold
                             gloveText.Text = plr.leaderstats and plr.leaderstats.Glove and plr.leaderstats.Glove.Value or "Loading"
                             table.insert(espObjects[plr], gloveBill)
 
+                            -- Name label
                             local nameBill = Instance.new("BillboardGui", hrp)
                             nameBill.Size = UDim2.new(0, 200, 0, 50)
                             nameBill.StudsOffset = Vector3.new(0, 3, 0)
@@ -113,12 +115,12 @@ Tab:CreateToggle({
                             nameText.BackgroundTransparency = 1
                             nameText.TextColor3 = Color3.new(1, 1, 1)
                             nameText.TextStrokeTransparency = 0
-                            nameText.TextScaled = false
-                            nameText.Font = Enum.Font.SourceSans
                             nameText.TextSize = 14
+                            nameText.Font = Enum.Font.SourceSans
                             nameText.Text = plr.DisplayName
                             table.insert(espObjects[plr], nameBill)
 
+                            -- Red box
                             local box = Instance.new("BoxHandleAdornment", hrp)
                             box.Size = Vector3.new(2, 3, 1)
                             box.Color3 = Color3.new(0.5, 0, 0)
@@ -136,49 +138,27 @@ Tab:CreateToggle({
     end,
 })
 
--- Fly & Noclip
-Tab:CreateSection("Fly / Noclip")
+-- Fly + Noclip
+Tab:CreateSection("Fly & Noclip")
 Tab:CreateToggle({
-    Name = "Fly (Press F)",
+    Name = "Fly (Hold F)",
     CurrentValue = false,
-    Callback = function(value)
-        flyEnabled = value
+    Callback = function(state)
+        flyEnabled = state
     end,
 })
 Tab:CreateToggle({
     Name = "Noclip",
     CurrentValue = false,
-    Callback = function(value)
-        noclipEnabled = value
+    Callback = function(state)
+        noclipEnabled = state
     end,
 })
-RunService.Stepped:Connect(function()
-    if noclipEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        for _, part in pairs(player.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.F then
-        flyActive = not flyActive
-    end
-end)
-RunService.RenderStepped:Connect(function()
-    if flyEnabled and flyActive and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = player.Character.HumanoidRootPart
-        hrp.Velocity = Vector3.new(0, 50, 0)
-    end
-end)
 
 -- Dodge
 Tab:CreateSection("Dodge")
 Tab:CreateToggle({
-    Name = "Dodge (Press Q)",
+    Name = "Dodge (Hold Q)",
     CurrentValue = false,
     Callback = function(value)
         dodge = value
@@ -194,7 +174,7 @@ Tab:CreateInput({
 
 -- Dodge Up
 Tab:CreateToggle({
-    Name = "Dodge Up (Press Z)",
+    Name = "Dodge Up (Hold Z)",
     CurrentValue = false,
     Callback = function(value)
         dodgeUp = value
@@ -208,54 +188,60 @@ Tab:CreateInput({
     end,
 })
 
--- Continuous Dodge Handler
-local qHeld = false
-local zHeld = false
-RunService.RenderStepped:Connect(function(dt)
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        if dodge and qHeld then
-            hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * (dodgeDistance * dt)
-        end
-        if dodgeUp and zHeld then
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, dodgeUpDistance * dt, 0)
-        end
-    end
-end)
+-- Input Handlers
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.Q then
-        qHeld = true
-    elseif input.KeyCode == Enum.KeyCode.Z then
-        zHeld = true
-    end
+    if input.KeyCode == Enum.KeyCode.Q then qHeld = true end
+    if input.KeyCode == Enum.KeyCode.Z then zHeld = true end
+    if input.KeyCode == Enum.KeyCode.F then fHeld = true end
 end)
+
 UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.Q then
-        qHeld = false
-    elseif input.KeyCode == Enum.KeyCode.Z then
-        zHeld = false
+    if input.KeyCode == Enum.KeyCode.Q then qHeld = false end
+    if input.KeyCode == Enum.KeyCode.Z then zHeld = false end
+    if input.KeyCode == Enum.KeyCode.F then fHeld = false end
+end)
+
+-- Continuous Dodge + Fly + Noclip
+RunService.RenderStepped:Connect(function(dt)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    if dodge and qHeld then
+        hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * dodgeDistance * dt
+    end
+    if dodgeUp and zHeld then
+        hrp.CFrame = hrp.CFrame + Vector3.new(0, dodgeUpDistance * dt, 0)
+    end
+    if flyEnabled and fHeld then
+        hrp.Velocity = Vector3.new(0, 60, 0)
+    elseif hrp.Velocity.Y > 0 and not fHeld then
+        hrp.Velocity = Vector3.new(0, 0, 0)
+    end
+
+    if noclipEnabled then
+        for _, v in ipairs(player.Character:GetDescendants()) do
+            if v:IsA("BasePart") and v.CanCollide then
+                v.CanCollide = false
+            end
+        end
     end
 end)
 
 -- Teleport Buttons
 Tab:CreateSection("Teleport")
-local teleportOrder = {
+for _, location in ipairs({
     "Main Island", "Lobby", "Cube of Death Island", "Cube of Death",
     "Slapple Island", "Cannon Island", "Brazil"
-}
-for _, location in ipairs(teleportOrder) do
+}) do
     Tab:CreateButton({
         Name = "Teleport to " .. location,
-        Callback = function()
-            teleportToLocation(location)
-        end
+        Callback = function() teleportToLocation(location) end
     })
 end
 
 Rayfield:LoadConfiguration()
 
--- Character Reset Handler
 player.CharacterAdded:Connect(function(character)
     character:WaitForChild("HumanoidRootPart")
     local humanoid = character:WaitForChild("Humanoid")
