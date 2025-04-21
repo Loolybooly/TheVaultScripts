@@ -15,6 +15,7 @@ local flyEnabled = false
 local noclipEnabled = false
 local flying = false
 local flyKeyDown = false
+local flySpeed = 50
 
 -- GUI (Rayfield)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -154,30 +155,55 @@ Tab:CreateToggle({
 })
 
 local function flyLoop()
-    local BodyGyro = Instance.new("BodyGyro")
-    local BodyVelocity = Instance.new("BodyVelocity")
-    BodyGyro.P = 9e4
-    BodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-    BodyGyro.cframe = player.Character.HumanoidRootPart.CFrame
-    BodyGyro.Parent = player.Character.HumanoidRootPart
-
-    BodyVelocity.velocity = Vector3.new(0,0,0)
-    BodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
-    BodyVelocity.Parent = player.Character.HumanoidRootPart
+    local bodyGyro = Instance.new("BodyGyro")
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyGyro.P = 9e4
+    bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.Parent = player.Character:WaitForChild("HumanoidRootPart")
+    
+    bodyVelocity.maxForce = Vector3.new(9e9, 9e9, 9e9)
+    bodyVelocity.Parent = player.Character:WaitForChild("HumanoidRootPart")
 
     flying = true
-    while flying and player.Character and player.Character:FindFirstChild("HumanoidRootPart") do
-        BodyVelocity.velocity = workspace.CurrentCamera.CFrame.lookVector * 50
-        BodyGyro.CFrame = workspace.CurrentCamera.CFrame
+
+    while flying do
+        local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            -- Movement controls
+            local velocity = Vector3.new()
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                velocity = velocity + workspace.CurrentCamera.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                velocity = velocity - workspace.CurrentCamera.CFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                velocity = velocity - workspace.CurrentCamera.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                velocity = velocity + workspace.CurrentCamera.CFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                velocity = velocity + Vector3.new(0, 1, 0) -- Up
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                velocity = velocity - Vector3.new(0, 1, 0) -- Down
+            end
+
+            -- Apply the velocity
+            bodyVelocity.Velocity = velocity * flySpeed
+            bodyGyro.CFrame = workspace.CurrentCamera.CFrame
+        end
         RunService.RenderStepped:Wait()
     end
 
-    BodyGyro:Destroy()
-    BodyVelocity:Destroy()
+    -- Cleanup
+    bodyGyro:Destroy()
+    bodyVelocity:Destroy()
 end
 
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F and flyEnabled then
         flying = not flying
         if flying then
