@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 -- Player
 local player = Players.LocalPlayer
@@ -11,69 +12,37 @@ local dodgeDistance = 10
 local dodgeUpDistance = 15
 local espEnabled = false
 local espObjects = {}
-local noclip = false
-local flyEnabled = false
-local flySpeed = 50
-local flying = false
-local killAuraEnabled = false
-local gloveReachExtenderEnabled = false
-local antiRagdollEnabled = false
 
 -- GUI (Rayfield)
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
     Name = "Slap Battles",
     LoadingTitle = "By The Vault Scripts",
-    LoadingSubtitle = "Coded by Muye & Looly",
+    LoadingSubtitle = "Designed by Looly",
     Theme = "Default",
 })
 
+-- Tabs
 local Tab = Window:CreateTab("Main", 4483362458)
 
--- Discord Invite Button
-Tab:CreateSection("Discord")
+-- Discord Invite
 Tab:CreateButton({
-    Name = "Copy Discord Link",
+    Name = "📋 Copy Discord Invite",
     Callback = function()
         setclipboard("https://discord.gg/NUsQx6pnyQ")
-    end,
+    end
 })
 
 -- Special Features
 Tab:CreateSection("Special Features")
 
--- Anti-Ragdoll Toggle
+-- Glove Reach Toggle
 Tab:CreateToggle({
-    Name = "Anti Ragdoll",
+    Name = "Glove Reach",
     CurrentValue = false,
     Callback = function(state)
-        antiRagdollEnabled = state
-        local character = player.Character
-        if character and antiRagdollEnabled then
-            local humanoid = character:WaitForChild("Humanoid")
-            humanoid.Died:Connect(function()
-                humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-            end)
-        end
-    end,
-})
-
--- Glove Reach Extender Toggle
-Tab:CreateToggle({
-    Name = "Glove Reach Extender",
-    CurrentValue = false,
-    Callback = function(state)
-        gloveReachExtenderEnabled = state
-    end,
-})
-
--- Kill Aura Toggle
-Tab:CreateToggle({
-    Name = "Kill Aura",
-    CurrentValue = false,
-    Callback = function(state)
-        killAuraEnabled = state
-    end,
+        getgenv().GloveReach = state
+    end
 })
 
 -- Slapple Farm
@@ -88,7 +57,7 @@ Tab:CreateToggle({
                 while getgenv().slapfarmspissb do
                     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
                     if hrp then
-                        for _, v in pairs(workspace.Arena.island5.Slapples:GetDescendants()) do
+                        for _, v in pairs(Workspace.Arena.island5.Slapples:GetDescendants()) do
                             if v.Name == "Glove" and v:FindFirstChild("TouchInterest") then
                                 firetouchinterest(hrp, v, 0)
                                 firetouchinterest(hrp, v, 1)
@@ -109,15 +78,12 @@ Tab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         espEnabled = state
-
-        -- Clear old ESP
         for _, objs in pairs(espObjects) do
             for _, obj in ipairs(objs) do
                 obj:Destroy()
             end
         end
         espObjects = {}
-
         if state then
             RunService:BindToRenderStep("ESP", Enum.RenderPriority.Camera.Value + 1, function()
                 for _, plr in pairs(Players:GetPlayers()) do
@@ -126,10 +92,10 @@ Tab:CreateToggle({
                         if not espObjects[plr] then
                             espObjects[plr] = {}
 
-                            -- Glove label
+                            -- Glove ESP Text (Only shows glove name)
                             local gloveBill = Instance.new("BillboardGui", hrp)
                             gloveBill.Size = UDim2.new(0, 200, 0, 50)
-                            gloveBill.StudsOffset = Vector3.new(0, 4, 0)
+                            gloveBill.StudsOffset = Vector3.new(0, 4.5, 0) -- Adjusted position (moved text higher)
                             gloveBill.AlwaysOnTop = true
                             local gloveText = Instance.new("TextLabel", gloveBill)
                             gloveText.Size = UDim2.new(1, 0, 1, 0)
@@ -141,26 +107,10 @@ Tab:CreateToggle({
                             gloveText.TextSize = 18
                             gloveText.Text = plr.leaderstats and plr.leaderstats.Glove and plr.leaderstats.Glove.Value or "Loading"
                             table.insert(espObjects[plr], gloveBill)
-
-                            -- Name label
-                            local nameBill = Instance.new("BillboardGui", hrp)
-                            nameBill.Size = UDim2.new(0, 200, 0, 50)
-                            nameBill.StudsOffset = Vector3.new(0, 3, 0)
-                            nameBill.AlwaysOnTop = true
-                            local nameText = Instance.new("TextLabel", nameBill)
-                            nameText.Size = UDim2.new(1, 0, 1, 0)
-                            nameText.BackgroundTransparency = 1
-                            nameText.TextColor3 = Color3.new(1, 1, 1)
-                            nameText.TextStrokeTransparency = 0
-                            nameText.TextScaled = false
-                            nameText.Font = Enum.Font.SourceSans
-                            nameText.TextSize = 14
-                            nameText.Text = plr.DisplayName
-                            table.insert(espObjects[plr], nameBill)
-
-                            -- Red square
+                           
+                            -- Torso ESP Box (Correct R6 Size: 2x2x1)
                             local box = Instance.new("BoxHandleAdornment", hrp)
-                            box.Size = Vector3.new(2, 3, 1)
+                            box.Size = Vector3.new(2, 2, 1) -- Matches R6 torso
                             box.Color3 = Color3.new(0.5, 0, 0)
                             box.Transparency = 0
                             box.AlwaysOnTop = true
@@ -192,8 +142,6 @@ Tab:CreateInput({
         dodgeDistance = tonumber(text) or 10
     end,
 })
-
--- Dodge Up
 Tab:CreateToggle({
     Name = "Dodge Up (Press Z)",
     CurrentValue = false,
@@ -209,37 +157,54 @@ Tab:CreateInput({
     end,
 })
 
--- Teleport
-Tab:CreateSection("Teleport")
-for name, _ in pairs(teleportLocations) do
-    Tab:CreateButton({
-        Name = "Teleport to " .. name,
-        Callback = function()
-            teleportToLocation(name)
-        end,
-    })
-end
-
--- Input Handler for Dodge & Fly
+-- Input Handler for Dodge
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.Q and dodge then
-        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
+    if not gameProcessed and player.Character then
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if input.KeyCode == Enum.KeyCode.Q and dodge and hrp then
             hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * dodgeDistance
-        end
-    elseif input.KeyCode == Enum.KeyCode.Z and dodgeUp then
-        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
+        elseif input.KeyCode == Enum.KeyCode.Z and dodgeUp and hrp then
             hrp.CFrame = hrp.CFrame + Vector3.new(0, dodgeUpDistance, 0)
         end
     end
 end)
 
--- Copy Discord Link to Clipboard
-local copyDiscordLinkButton = Tab:CreateButton({
-    Name = "Copy Discord Link",
-    Callback = function()
-        setclipboard("https://discord.gg/NUsQx6pnyQ")
-    end,
-})
+-- Teleports
+Tab:CreateSection("Teleport")
+local teleportLocations = {
+    ["Main Island"] = Vector3.new(2.1791, -5.173, 5.9531),
+    ["Lobby"] = Vector3.new(-900.5245, 328.0385, -2.0989),
+    ["Cube of Death Island"] = Vector3.new(-242.0591, -5.2782, 2.3795),
+    ["Cube of Death"] = Vector3.new(-270.1338, -5.2782, 0.6983),
+    ["Slapple Island"] = Vector3.new(-394.4224, 50.7642, -13.9544),
+    ["Cannon Island"] = Vector3.new(254.4748, 33.6846, 192.0113),
+    ["Brazil"] = Vector3.new(-820.2054, 305.506, -2.2074),
+}
+for name, pos in pairs(teleportLocations) do
+    Tab:CreateButton({
+        Name = "Teleport to " .. name,
+        Callback = function()
+            local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
+            end
+        end
+    })
+end
+
+-- Glove Reach Logic
+RunService.Stepped:Connect(function()
+    if getgenv().GloveReach then
+        local char = player.Character
+        if char and char:FindFirstChild("entered") then
+            for _, obj in ipairs(char:GetChildren()) do
+                if obj.Name:lower():find("glove") and obj:IsA("BasePart") then
+                    obj.CanTouch = true
+                    obj.Size = Vector3.new(50, 50, 50) -- Enlarged hitbox
+                end
+            end
+        end
+    end
+end)
+
+Rayfield:LoadConfiguration()
