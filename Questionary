@@ -13,6 +13,8 @@ local dodgeUpDistance = 15
 local espEnabled = false
 local espObjects = {}
 local antiVoidEnabled = false
+local floatHeight = -5.1728 -- Target height for anti-void floating
+local floatThreshold = -5.5 -- Y position threshold to trigger floating
 local freezeEnabled = false
 local isFrozen = false
 local freezeKey = Enum.KeyCode.F
@@ -159,12 +161,8 @@ RunService.Heartbeat:Connect(function()
         end
         flyBodyVelocity.Velocity = moveDirection
     end
-    if antiVoidEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = player.Character.HumanoidRootPart
-        if hrp.Position.Y < -20 then
-            hrp.Velocity = Vector3.new(0, 85, 0)
-        end
-    end
+
+    handleAntiVoid()
 end)
 
 local function ToggleFreeze()
