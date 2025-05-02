@@ -135,6 +135,42 @@ local function ToggleNoClip()
     end
 end
 
+local antiVoidFloatVelocity
+local function handleAntiVoid()
+    if not antiVoidEnabled or not player.Character then return end
+    
+    local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    
+    -- Check if below threshold
+    if hrp.Position.Y < floatThreshold then
+        -- Create or update the BodyVelocity
+        if not antiVoidFloatVelocity or not antiVoidFloatVelocity.Parent then
+            antiVoidFloatVelocity = Instance.new("BodyVelocity")
+            antiVoidFloatVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+            antiVoidFloatVelocity.P = 9000
+            antiVoidFloatVelocity.Parent = hrp
+        end
+        
+        -- Calculate velocity based on current position
+        local targetY = floatHeight
+        local currentY = hrp.Position.Y
+        local distance = targetY - currentY
+        local force = math.clamp(distance * 25, -50, 50)
+        
+        -- Apply velocity to maintain target height
+        antiVoidFloatVelocity.Velocity = Vector3.new(0, force, 0)
+        
+        -- Keep X and Z velocity from HRP to allow horizontal movement
+        local currentVelocity = hrp.Velocity
+        hrp.Velocity = Vector3.new(currentVelocity.X, hrp.Velocity.Y, currentVelocity.Z)
+    elseif antiVoidFloatVelocity and antiVoidFloatVelocity.Parent then
+        -- Remove BodyVelocity when above threshold
+        antiVoidFloatVelocity:Destroy()
+        antiVoidFloatVelocity = nil
+    end
+end
+
 RunService.Stepped:Connect(function()
     if noclip and player.Character then
         for _, part in pairs(player.Character:GetDescendants()) do
