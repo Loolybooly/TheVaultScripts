@@ -155,7 +155,6 @@ RunService.Heartbeat:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDirection -= cam.CFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDirection += cam.CFrame.RightVector end
         if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDirection += Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDirection += Vector3.new(0, -1, 0) end
         if moveDirection.Magnitude > 0 then
             moveDirection = moveDirection.Unit * flySpeed
         end
@@ -261,13 +260,6 @@ Tab:CreateToggle({
         if not state and isFrozen then
             ToggleFreeze()
         end
-    end
-})
-Tab:CreateToggle({
-    Name = "Anti-Void",
-    CurrentValue = false,
-    Callback = function(state)
-        antiVoidEnabled = state
     end
 })
 
