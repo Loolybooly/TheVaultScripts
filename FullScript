@@ -1,0 +1,40 @@
+local supportedGameIds = {
+    6403373529, -- Slap battles
+    10449761463 -- TSB
+}
+
+local currentGameId = game.PlaceId
+local isSupported = table.find(supportedGameIds, currentGameId) ~= nil
+
+if isSupported then
+    if currentGameId == 6403373529 then -- Slap Battles
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Loolybooly/TheVaultScripts/refs/heads/main/SlapBattles"))()
+    elseif currentGameId == 10449761463 then -- TSB
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Loolybooly/TheVaultScripts/refs/heads/main/TSBG"))()
+    end
+else
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "❌ Unsupported Game",
+        Text = "This game isn't supported by The Vault Scripts!",
+        Duration = 10,
+        Button1 = "Awww ok ):"
+    })
+
+    task.wait(1)
+
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Game Detected",
+        Text = "Current Game ID: " .. currentGameId,
+        Duration = 10,
+        Button1 = "Close"
+    })
+
+    warn("Script stopped - Expected Game IDs: 6403373529, or 10449761463 | Current Game ID: " .. currentGameId)
+
+    if game:GetService("SoundService").RespectFilteringEnabled then
+        local errorSound = Instance.new("Sound")
+        errorSound.SoundId = "rbxassetid://1319978998"
+        errorSound.Parent = game:GetService("SoundService")
+        errorSound:Play()
+    end
+end
