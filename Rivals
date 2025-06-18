@@ -1,0 +1,268 @@
+﻿--== SETTINGS ==--
+local Settings = {
+    Highlight = {
+        Enabled = true,
+        Teamcheck = false,
+        Transparency = 0.7,
+        IgnoreDead = true,
+        EnemyColor = Color3.fromRGB(255, 0, 0),
+        EnemyColorRainbow = true,
+        TeamColor = Color3.fromRGB(0, 255, 0),
+        TeamColorRainbow = false,
+    },
+
+    Aimbot = {
+        Enabled = true,
+        Radius = 200,
+        TargetPart = "Head",
+        VisibleCheck = true,
+        TimeToTarget = 0.3,
+        Teamcheck = true,
+        Color = Color3.fromRGB(225, 106, 255),
+        Rainbow = true,
+    }
+}
+
+--== SERVICES & VARIABLES ==--
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local Camera = Workspace.CurrentCamera
+local GuiInset = GuiService:GetGuiInset()
+
+local WorldToScreen = Camera.WorldToScreenPoint
+
+--== INTERNAL STATE ==--
+local Internals = {
+    Connections = {},
+    HiddenGui = gethui(),
+    Highlights = {},
+    Drawings = {},
+    Aimbot = {
+        On = false,
+        ElapsedTime = 0,
+        Target = nil,
+    }
+}
+
+--== UTILITIES ==--
+local function IsTeammate(player)
+    return player.Character
+        and player.Character:FindFirstChild("HumanoidRootPart")
+        and player.Character.HumanoidRootPart:FindFirstChild("TeammateLabel") ~= nil
+end
+
+local function IsVisible(player)
+    local origin = Camera.CFrame.Position
+    local target = player.Character[Settings.Aimbot.TargetPart].Position
+
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    rayParams.FilterDescendantsInstances = {player.Character, LocalPlayer.Character}
+
+    return not Workspace:Raycast(origin, (target - origin), rayParams)
+end
+
+local function FindClosestPlayer()
+    local closest, minDist
+    print("Searching for closest player...")
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        print("Checking:", player.Name)
+
+        local char = player.Character
+        local part = char and char:FindFirstChild(Settings.Aimbot.TargetPart)
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not (part and hum and hum.Health > 0) then
+            print("Skipping (missing part or dead):", player.Name)
+            continue
+        end
+
+        local screenPos = WorldToScreen(Camera, part.Position)
+        if screenPos.Z < 0 then
+            print("Skipping (behind camera):", player.Name)
+            continue
+        end
+
+		local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        local dist = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+        if dist > Settings.Aimbot.Radius then
+            print("Skipping (out of radius):", player.Name)
+            continue
+        end
+
+        print("Candidate:", player.Name, "Distance:", math.floor(dist))
+
+        if not closest or dist < minDist then
+            closest, minDist = player, dist
+        end
+    end
+
+    print("Closest selected:", closest and closest.Name or "none")
+    return closest
+end
+
+--== HIGHLIGHT SYSTEM ==--
+local function AddPlayerHighlight(player)
+    local highlight = Instance.new("Highlight")
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = Internals.HiddenGui
+
+    local isTeammate = IsTeammate(player)
+    highlight.FillTransparency = isTeammate and Settings.Highlight.Teamcheck and 1 or Settings.Highlight.Transparency
+    highlight.OutlineTransparency = isTeammate and Settings.Highlight.Teamcheck and 1 or 0
+    highlight.FillColor = isTeammate and Settings.Highlight.TeamColor or Settings.Highlight.EnemyColor
+    highlight.OutlineColor = highlight.FillColor
+
+    Internals.Highlights[player.Name] = highlight
+    if player.Character then highlight.Adornee = player.Character end
+
+    table.insert(Internals.Connections, player.CharacterAdded:Connect(function(char)
+        highlight.Adornee = char
+    end))
+end
+
+local function RemovePlayerHighlight(player)
+    local hl = Internals.Highlights[player.Name]
+    if hl then
+        hl:Destroy()
+        Internals.Highlights[player.Name] = nil
+    end
+end
+
+local function UpdatePlayerHighlight(player)
+    local hl = Internals.Highlights[player.Name]
+    if not hl then return end
+
+    local isTeammate = IsTeammate(player)
+    local color = (isTeammate and Settings.Highlight.TeamColor) or Settings.Highlight.EnemyColor
+    if (isTeammate and Settings.Highlight.TeamColorRainbow) or (not isTeammate and Settings.Highlight.EnemyColorRainbow) then
+        color = Color3.fromHSV((os.clock() / 5) % 1, 1, 1)
+    end
+
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if humanoid and humanoid.Health <= 0 and Settings.Highlight.IgnoreDead then
+        hl.FillTransparency, hl.OutlineTransparency = 1, 1
+        return
+    elseif humanoid and humanoid.Health <= 0 then
+        color = Color3.new(0, 0, 0)
+    end
+
+    hl.FillTransparency = isTeammate and Settings.Highlight.Teamcheck and 1 or Settings.Highlight.Transparency
+    hl.OutlineTransparency = isTeammate and Settings.Highlight.Teamcheck and 1 or 0
+    hl.FillColor, hl.OutlineColor = color, color
+end
+
+--== AIMBOT TOGGLE KEYBIND ==--
+table.insert(Internals.Connections, UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+
+    if input.KeyCode == Enum.KeyCode.U then
+        Internals.Aimbot.On = not Internals.Aimbot.On
+        Internals.Aimbot.ElapsedTime = 0
+        Internals.Aimbot.Target = nil
+        print("Aimbot toggled:", Internals.Aimbot.On)
+
+    elseif input.KeyCode == Enum.KeyCode.Z then
+        local target = FindClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetHRP = target.Character.HumanoidRootPart
+            local myHRP = LocalPlayer.Character.HumanoidRootPart
+
+            local offset = targetHRP.CFrame.LookVector * -3
+            myHRP.CFrame = CFrame.new(targetHRP.Position + offset, targetHRP.Position)
+
+            print("Teleported to:", target.Name)
+        else
+            warn("No valid target found to teleport to.")
+        end
+
+    elseif input.KeyCode == Enum.KeyCode.P then
+        task.spawn(function()
+            while true do
+                local playButton = Workspace:FindFirstChild("PlayButton") or Workspace:FindFirstChild("Start1v1") or nil
+                if playButton and playButton:IsA("ClickDetector") then
+                    fireclickdetector(playButton)
+                    print("Started 1v1")
+                end
+
+                repeat task.wait(0.5) until FindClosestPlayer() ~= nil
+
+                local target = FindClosestPlayer()
+                if not target then break end
+
+                while target and target.Character and target.Character:FindFirstChild("Humanoid") and target.Character.Humanoid.Health > 0 do
+                    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
+                    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp and myHRP then
+                        local offset = hrp.CFrame.LookVector * -3
+                        myHRP.CFrame = CFrame.new(hrp.Position + offset, hrp.Position)
+                    end
+
+                    Internals.Aimbot.On = true
+                    task.wait(0.25)
+                    Internals.Aimbot.On = false
+
+                    task.wait(0.5)
+                    target = FindClosestPlayer()
+                end
+
+                print("Match ended, restarting")
+                task.wait(1)
+            end
+        end)
+    end
+end))
+
+--== HIGHLIGHT INITIALIZATION ==--
+if Settings.Highlight.Enabled then
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then AddPlayerHighlight(player) end
+    end
+    table.insert(Internals.Connections, Players.PlayerAdded:Connect(AddPlayerHighlight))
+    table.insert(Internals.Connections, Players.PlayerRemoving:Connect(RemovePlayerHighlight))
+end
+
+--== MAIN LOOP ==--
+table.insert(Internals.Connections, RunService.RenderStepped:Connect(function(dt)
+    -- Update highlights
+    for name, hl in pairs(Internals.Highlights) do
+        local player = Players:FindFirstChild(name)
+        if player then UpdatePlayerHighlight(player) end
+    end
+
+    -- Aimbot logic
+    if Settings.Aimbot.Enabled and Internals.Aimbot.On then
+        local alpha = math.clamp(Internals.Aimbot.ElapsedTime / Settings.Aimbot.TimeToTarget, 0, 1)
+        local target = Internals.Aimbot.Target
+
+        if not (target and target.Character and target:FindFirstChild("Humanoid") and target.Humanoid.Health > 0) then
+            target = FindClosestPlayer()
+        end
+
+        if target then
+            Internals.Aimbot.Target = target
+            Internals.Aimbot.ElapsedTime += dt
+
+            local part = target.Character[Settings.Aimbot.TargetPart]
+            local screenPos = WorldToScreen(Camera, part.Position)
+
+            if not Settings.Aimbot.VisibleCheck or IsVisible(target) then
+                local delta = Vector2.new(screenPos.X - Mouse.X, screenPos.Y - Mouse.Y)
+                mousemoverel(delta.X * alpha, delta.Y * alpha)
+            end
+        else
+            Internals.Aimbot.ElapsedTime = 0
+        end
+    end
+end))
+
+print("Script Loaded")
