@@ -1,4 +1,4 @@
-﻿--== SETTINGS ==--
+--== SETTINGS ==--
 local Settings = {
     Highlight = {
         Enabled = true,
@@ -39,6 +39,39 @@ local GuiInset = GuiService:GetGuiInset()
 
 local WorldToScreen = Camera.WorldToScreenPoint
 
+local con = LocalPlayer.OnTeleport:Connect(function(state)
+    queue_on_teleport(game:HttpGet("https://raw.githubusercontent.com/AshtonsAlt/Roblox/refs/heads/main/Games/Rivials.lua"))
+    con:Disconnect()
+    table.remove(Internals.Connections, con)
+end)
+table.insert(Internals.Connections, con)
+
+--== KEYBIND GUI ==--
+local CoreGui = game:GetService("CoreGui")
+
+for _, child in ipairs(CoreGui:GetChildren()) do
+    if child.Name == "KeybindHelpGui" or child.Name == "StatusGui" then
+        child:Destroy()
+    end
+end
+local KeybindGui = Instance.new("ScreenGui")
+local KeybindFrame = Instance.new("Frame")
+local KeybindTitle = Instance.new("TextLabel")
+local KeybindCloseButton = Instance.new("TextButton")
+local KeybindsLabel = Instance.new("TextLabel")
+
+--== STATUS GUI ==--
+local oldStatus = CoreGui:FindFirstChild("StatusGui")
+if oldStatus then oldStatus:Destroy() end
+
+local StatusGui = Instance.new("ScreenGui")
+local StatusLabel = Instance.new("TextLabel")
+
+local customWalkSpeed = 50
+local customJumpPower = 100
+
+local wsMonitor, jpMonitor
+
 --== INTERNAL STATE ==--
 local Internals = {
     Connections = {},
@@ -72,42 +105,56 @@ end
 
 local function FindClosestPlayer()
     local closest, minDist
-    print("Searching for closest player...")
 
     for _, player in pairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
-        print("Checking:", player.Name)
 
         local char = player.Character
         local part = char and char:FindFirstChild(Settings.Aimbot.TargetPart)
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         if not (part and hum and hum.Health > 0) then
-            print("Skipping (missing part or dead):", player.Name)
             continue
         end
 
         local screenPos = WorldToScreen(Camera, part.Position)
         if screenPos.Z < 0 then
-            print("Skipping (behind camera):", player.Name)
             continue
         end
 
 		local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         local dist = (Vector2.new(Mouse.X, Mouse.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
         if dist > Settings.Aimbot.Radius then
-            print("Skipping (out of radius):", player.Name)
             continue
         end
-
-        print("Candidate:", player.Name, "Distance:", math.floor(dist))
 
         if not closest or dist < minDist then
             closest, minDist = player, dist
         end
     end
 
-    print("Closest selected:", closest and closest.Name or "none")
     return closest
+end
+
+local function CreateHPBillboard(player)
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "HPBillboard"
+	billboard.Size = UDim2.new(0, 100, 0, 20)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+
+	local label = Instance.new("TextLabel")
+	label.Name = "HPText"
+	label.Parent = billboard
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(0, 255, 0)
+	label.Font = Enum.Font.SourceSansBold
+	label.TextScaled = true
+	label.Text = ""
+
+	billboard.Parent = Internals.HiddenGui
+	return billboard
 end
 
 --== HIGHLIGHT SYSTEM ==--
@@ -127,6 +174,25 @@ local function AddPlayerHighlight(player)
 
     table.insert(Internals.Connections, player.CharacterAdded:Connect(function(char)
         highlight.Adornee = char
+    end))
+
+    --== HP Billboard ==--
+    local hpGui = CreateHPBillboard(player)
+    Internals.Drawings[player.Name .. "_HP"] = hpGui
+
+    if player.Character then
+        local head = player.Character:FindFirstChild("Head")
+        if head then
+            hpGui.Adornee = head
+        end
+    end
+
+    table.insert(Internals.Connections, player.CharacterAdded:Connect(function(char)
+        task.wait(1)
+        local head = char:FindFirstChild("Head")
+        if head then
+            hpGui.Adornee = head
+        end
     end))
 end
 
@@ -161,6 +227,32 @@ local function UpdatePlayerHighlight(player)
     hl.FillColor, hl.OutlineColor = color, color
 end
 
+local function updateHumanoidStats()
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            if wsMonitor then wsMonitor:Disconnect() end
+            if jpMonitor then jpMonitor:Disconnect() end
+
+            humanoid.WalkSpeed = customWalkSpeed
+            humanoid.JumpPower = customJumpPower
+
+            wsMonitor = humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+                if humanoid.WalkSpeed ~= customWalkSpeed then
+                    humanoid.WalkSpeed = customWalkSpeed
+                end
+            end)
+
+            jpMonitor = humanoid:GetPropertyChangedSignal("JumpPower"):Connect(function()
+                if humanoid.JumpPower ~= customJumpPower then
+                    humanoid.JumpPower = customJumpPower
+                end
+            end)
+        end
+    end
+end
+
 --== AIMBOT TOGGLE KEYBIND ==--
 table.insert(Internals.Connections, UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
@@ -169,56 +261,39 @@ table.insert(Internals.Connections, UserInputService.InputBegan:Connect(function
         Internals.Aimbot.On = not Internals.Aimbot.On
         Internals.Aimbot.ElapsedTime = 0
         Internals.Aimbot.Target = nil
-        print("Aimbot toggled:", Internals.Aimbot.On)
 
     elseif input.KeyCode == Enum.KeyCode.Z then
         local target = FindClosestPlayer()
-        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        if target
+            and target.Character
+            and target.Character:FindFirstChild("HumanoidRootPart")
+            and LocalPlayer.Character
+            and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
             local targetHRP = target.Character.HumanoidRootPart
             local myHRP = LocalPlayer.Character.HumanoidRootPart
-
             local offset = targetHRP.CFrame.LookVector * -3
-            myHRP.CFrame = CFrame.new(targetHRP.Position + offset, targetHRP.Position)
 
-            print("Teleported to:", target.Name)
-        else
-            warn("No valid target found to teleport to.")
+            myHRP.CFrame = CFrame.new(targetHRP.Position + offset, targetHRP.Position)
         end
 
-    elseif input.KeyCode == Enum.KeyCode.P then
-        task.spawn(function()
-            while true do
-                local playButton = Workspace:FindFirstChild("PlayButton") or Workspace:FindFirstChild("Start1v1") or nil
-                if playButton and playButton:IsA("ClickDetector") then
-                    fireclickdetector(playButton)
-                    print("Started 1v1")
+    elseif input.KeyCode == Enum.KeyCode.E then
+        Settings.Highlight.Enabled = not Settings.Highlight.Enabled
+
+        if Settings.Highlight.Enabled then
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    AddPlayerHighlight(player)
                 end
-
-                repeat task.wait(0.5) until FindClosestPlayer() ~= nil
-
-                local target = FindClosestPlayer()
-                if not target then break end
-
-                while target and target.Character and target.Character:FindFirstChild("Humanoid") and target.Character.Humanoid.Health > 0 do
-                    local hrp = target.Character:FindFirstChild("HumanoidRootPart")
-                    local myHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp and myHRP then
-                        local offset = hrp.CFrame.LookVector * -3
-                        myHRP.CFrame = CFrame.new(hrp.Position + offset, hrp.Position)
-                    end
-
-                    Internals.Aimbot.On = true
-                    task.wait(0.25)
-                    Internals.Aimbot.On = false
-
-                    task.wait(0.5)
-                    target = FindClosestPlayer()
-                end
-
-                print("Match ended, restarting")
-                task.wait(1)
             end
-        end)
+        else
+            for _, player in ipairs(Players:GetPlayers()) do
+                RemovePlayerHighlight(player)
+            end
+        end
+
+    elseif input.KeyCode == Enum.KeyCode.J then
+        game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, Players.LocalPlayer)
     end
 end))
 
@@ -236,7 +311,21 @@ table.insert(Internals.Connections, RunService.RenderStepped:Connect(function(dt
     -- Update highlights
     for name, hl in pairs(Internals.Highlights) do
         local player = Players:FindFirstChild(name)
-        if player then UpdatePlayerHighlight(player) end
+        if player then
+            UpdatePlayerHighlight(player)
+
+            -- Update HP text above enemy
+            local hpGui = Internals.Drawings[name .. "_HP"]
+            if hpGui and player.Character then
+                local hum = player.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    hpGui.HPText.Text = string.format("HP: %.0f", hum.Health)
+                    hpGui.Enabled = true
+                else
+                    hpGui.Enabled = false
+                end
+            end
+        end
     end
 
     -- Aimbot logic
@@ -263,6 +352,119 @@ table.insert(Internals.Connections, RunService.RenderStepped:Connect(function(dt
             Internals.Aimbot.ElapsedTime = 0
         end
     end
+
+    -- Update status label every frame
+    StatusLabel.Text = string.format(
+        "[Aimbot: %s] [ESP: %s] [Boost: %s]",
+        Internals.Aimbot.On and "ON" or "OFF",
+        Settings.Highlight.Enabled and "ON" or "OFF",
+        Internals.MovementBoost and "ON" or "OFF"
+    )
 end))
 
+KeybindGui.Name = "KeybindHelpGui"
+KeybindGui.ResetOnSpawn = false
+KeybindGui.Enabled = false
+KeybindGui.Parent = game:GetService("CoreGui")
+
+KeybindFrame.Parent = KeybindGui
+KeybindFrame.Size = UDim2.new(0, 300, 0, 180)
+KeybindFrame.Position = UDim2.new(0.5, -150, 0.5, -90)
+KeybindFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+KeybindFrame.BorderSizePixel = 0
+KeybindFrame.Active = true
+KeybindFrame.Draggable = true
+
+KeybindTitle.Name = "Title"
+KeybindTitle.Parent = KeybindFrame
+KeybindTitle.Size = UDim2.new(1, 0, 0, 30)
+KeybindTitle.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+KeybindTitle.BorderSizePixel = 0
+KeybindTitle.Text = "Keybind Help"
+KeybindTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeybindTitle.Font = Enum.Font.GothamBold
+KeybindTitle.TextSize = 18
+
+KeybindCloseButton.Name = "Close"
+KeybindCloseButton.Parent = KeybindFrame
+KeybindCloseButton.Size = UDim2.new(0, 60, 0, 25)
+KeybindCloseButton.Position = UDim2.new(1, -65, 0, 2)
+KeybindCloseButton.BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+KeybindCloseButton.BorderSizePixel = 0
+KeybindCloseButton.Text = "Close"
+KeybindCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeybindCloseButton.Font = Enum.Font.GothamBold
+KeybindCloseButton.TextSize = 14
+
+KeybindsLabel.Name = "Keybinds"
+KeybindsLabel.Parent = KeybindFrame
+KeybindsLabel.Size = UDim2.new(1, -10, 1, -40)
+KeybindsLabel.Position = UDim2.new(0, 5, 0, 35)
+KeybindsLabel.BackgroundTransparency = 1
+KeybindsLabel.TextXAlignment = Enum.TextXAlignment.Left
+KeybindsLabel.TextYAlignment = Enum.TextYAlignment.Top
+KeybindsLabel.TextWrapped = true
+KeybindsLabel.Font = Enum.Font.Code
+KeybindsLabel.TextSize = 14
+KeybindsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+KeybindsLabel.Text = [[
+[U] - Toggle Aimbot
+[Z] - Teleport behind closest enemy
+[E] - Toggle the ESP on and off
+[T] - Toggle Speed/Jump boost
+[J] - Rejoin the game
+[X] - Show/Hide the stats GUI
+[H] - Show/Hide this keybind GUI
+]]
+
+StatusGui.Name = "StatusGui"
+StatusGui.ResetOnSpawn = false
+StatusGui.Parent = game:GetService("CoreGui")
+
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Parent = StatusGui
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Position = UDim2.new(0, 230, 0, -38)
+StatusLabel.Size = UDim2.new(0, 400, 0, 20)
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Font = Enum.Font.Code
+StatusLabel.TextSize = 16
+StatusLabel.Text = "[Aimbot: OFF] [ESP: OFF] [Boost: OFF]"
+
+KeybindCloseButton.MouseButton1Click:Connect(function()
+    KeybindGui.Enabled = false
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+
+    if input.KeyCode == Enum.KeyCode.H then
+        KeybindGui.Enabled = not KeybindGui.Enabled
+
+    elseif input.KeyCode == Enum.KeyCode.T then
+        Internals.MovementBoost = not Internals.MovementBoost
+
+        if Internals.MovementBoost then
+            updateHumanoidStats()
+        else
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+
+            if humanoid then
+                if wsMonitor then wsMonitor:Disconnect() end
+                if jpMonitor then jpMonitor:Disconnect() end
+
+                humanoid.WalkSpeed = 16
+                humanoid.JumpPower = 20
+            end
+        end
+
+    elseif input.KeyCode == Enum.KeyCode.X then
+        StatusGui.Enabled = not StatusGui.Enabled
+    end
+end)
+
+StatusGui.Enabled = true
+KeybindGui.Enabled = true
 print("Script Loaded")
