@@ -40,7 +40,7 @@ local GuiInset = GuiService:GetGuiInset()
 local WorldToScreen = Camera.WorldToScreenPoint
 
 local con = LocalPlayer.OnTeleport:Connect(function(state)
-    queue_on_teleport(game:HttpGet("https://raw.githubusercontent.com/AshtonsAlt/Roblox/refs/heads/main/Games/Rivials.lua"))
+    queue_on_teleport(game:HttpGet("https://raw.githubusercontent.com/Loolybooly/TheVaultScripts/refs/heads/main/Rivals"))
     con:Disconnect()
     table.remove(Internals.Connections, con)
 end)
